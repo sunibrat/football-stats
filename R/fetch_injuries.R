@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
 
-# Auto-install packages if missing
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
 if (!require("worldfootballR")) install.packages("worldfootballR")
@@ -15,78 +14,58 @@ cat("========================================\n")
 cat("🚑 FETCH INJURIES - START\n")
 cat("========================================\n")
 
-# Create data folder if it doesn't exist
+# Създаване на папка data
 if (!dir.exists("data")) dir.create("data")
 
-# List of countries for Transfermarkt
-countries_tm <- c(
-  "England", "Spain", "Italy", "Germany", "France", 
-  "Netherlands", "Portugal", "Belgium", "Turkey", 
-  "Greece", "Russia", "Ukraine", "Croatia", "Switzerland",
-  "Austria", "Scotland", "Poland", "Czech Republic", 
-  "Brazil", "Argentina", "USA", "Mexico", "Japan",
-  "South Korea", "China", "Australia"
+# Вземи контузени за топ отбори
+teams <- c(
+  "Real Madrid", "Barcelona", "Manchester City", "Liverpool", 
+  "Bayern Munich", "Paris Saint-Germain", "Juventus", "Milan",
+  "Inter", "Arsenal", "Chelsea", "Manchester United"
 )
 
-all_injuries <- data.frame()
+all_injuries <- list()
 
-for (i in seq_along(countries_tm)) {
-  country <- countries_tm[i]
-  cat(sprintf("\n[%d/%d] 🚑 Processing %s...\n", i, length(countries_tm), country))
+for (team in teams) {
+  cat(sprintf("\n🚑 Checking %s...\n", team))
   
   tryCatch({
-    # Get injuries for the league
-    injuries <- tm_league_injuries(
-      country_name = country, 
-      start_year = 2025,
-      league_url = NULL  # automatically gets first division
-    )
+    # Търси отбора в Transfermarkt
+    team_url <- tm_team_transfermarkt_url(team_name = team)
     
-    if (!is.null(injuries) && nrow(injuries) > 0) {
-      # Add country column
-      injuries$country <- country
-      injuries$fetch_date <- as.character(Sys.Date())
+    if (!is.null(team_url) && length(team_url) > 0) {
+      # Вземи контузени
+      injuries <- tm_squad_injuries(team_url = team_url)
       
-      # Merge with existing data
-      if (nrow(all_injuries) == 0) {
-        all_injuries <- injuries
+      if (!is.null(injuries) && nrow(injuries) > 0) {
+        injuries$team <- team
+        injuries$fetch_date <- as.character(Sys.Date())
+        
+        all_injuries[[team]] <- injuries
+        cat(sprintf("  ✅ Found %d injured players\n", nrow(injuries)))
       } else {
-        all_injuries <- bind_rows(all_injuries, injuries)
+        cat("  ⚠️ No injuries found\n")
       }
-      
-      cat(sprintf("  ✅ %d injured players\n", nrow(injuries)))
-    } else {
-      cat("  ⚠️ No injury data available\n")
     }
     
-    # Wait between requests
-    Sys.sleep(3)
+    Sys.sleep(2)
     
   }, error = function(e) {
-    cat(sprintf("  ❌ Error: %s\n", e$message))
+    cat("  ❌ ERROR:", e$message, "\n")
   })
 }
 
-# Save JSON file
-if (nrow(all_injuries) > 0) {
-  # Clean data (remove duplicates)
-  all_injuries <- all_injuries %>%
-    distinct(player_name, club, injury, .keep_all = TRUE)
-  
-  # Save as JSON
-  write_json(all_injuries, "data/injuries.json", pretty = TRUE, auto_unbox = TRUE)
-  cat(sprintf("\n✅ Saved %d injured players to data/injuries.json\n", nrow(all_injuries)))
-  
-  # Show sample
-  cat("\n📋 Sample data:\n")
-  print(head(all_injuries[, c("player_name", "club", "injury", "country")], 5))
-  
+# Записване
+cat("\n💾 Saving injuries.json...\n")
+
+if (length(all_injuries) > 0) {
+  injuries_df <- bind_rows(all_injuries)
+  write_json(injuries_df, "data/injuries.json", pretty = TRUE, auto_unbox = TRUE)
+  cat(sprintf("  ✅ Saved %d injuries\n", nrow(injuries_df)))
 } else {
-  cat("\n⚠️ No injured players found\n")
-  # Create empty JSON file
   write_json(list(), "data/injuries.json", pretty = TRUE)
+  cat("  ⚠️ No injuries data\n")
 }
 
-cat("\n========================================\n")
-cat("✅ FETCH INJURIES - COMPLETED\n")
+cat("\n✅ FETCH INJURIES - COMPLETED\n")
 cat("========================================\n")
