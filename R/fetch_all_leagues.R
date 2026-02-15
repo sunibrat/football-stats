@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 
-# Автоматично инсталиране на пакети
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
+# Инсталирай пакети ако трябва
 if (!require("worldfootballR")) install.packages("worldfootballR")
 if (!require("jsonlite")) install.packages("jsonlite")
 if (!require("dplyr")) install.packages("dplyr")
@@ -12,35 +12,21 @@ library(jsonlite)
 library(dplyr)
 
 cat("========================================\n")
-cat("🚀 FETCH ALL LEAGUES - СТАРТ\n")
+cat("🚀 FETCH ALL LEAGUES - DEBUG MODE\n")
 cat("========================================\n")
 
-# Създаване на папка data ако не съществува
-if (!dir.exists("data")) dir.create("data")
+# Проверка на версиите
+cat("\n📦 Package versions:\n")
+cat("  worldfootballR:", packageVersion("worldfootballR"), "\n")
+cat("  jsonlite:", packageVersion("jsonlite"), "\n")
+cat("  dplyr:", packageVersion("dplyr"), "\n")
 
-# Списък с държави (всички лиги от цял свят)
-countries <- c(
-  # Европа
-  "ENG", "ESP", "ITA", "GER", "FRA", "NED", "POR", "BEL", "TUR", "GRE", "RUS",
-  "UKR", "CRO", "DEN", "SUI", "AUT", "SCO", "POL", "CZE", "NOR", "SWE", "BUL", 
-  "ROU", "SRB", "HUN", "ISR", "CYP", "BLR", "KAZ", "AZE", "GEO", "ARM", "LVA",
-  "LTU", "EST", "ALB", "MKD", "SVN", "SVK", "BIH", "MNE", "KOS", "LUX", "MLT",
-  "ISL", "IRL", "NIR", "WAL",
-  # Северна Америка
-  "USA", "MEX", "CAN",
-  # Южна Америка
-  "BRA", "ARG", "URU", "CHI", "COL", "PAR", "PER", "ECU", "BOL", "VEN",
-  # Азия
-  "JPN", "KOR", "CHN", "KSA", "UAE", "AUS", "QAT", "IRN", "IRQ", "JOR", "SYR",
-  "LIB", "OMA", "BHR", "KUW", "YEM", "IND", "THA", "VIE", "IDN", "MAS", "SIN",
-  "PHI", "MYA", "CAM", "LAO", "TLS",
-  # Африка
-  "EGY", "TUN", "MAR", "RSA", "ALG", "NGA", "SEN", "CMR", "GHA", "CIV", "MLI",
-  "BFA", "GUI", "BEN", "TOG", "SLE", "LBR", "CTA", "CHA", "NIG", "SUD", "ERI",
-  "ETH", "DJI", "SOM", "UGA", "KEN", "TAN", "RWA", "BDI", "MOZ", "MAD", "COM",
-  "SEY", "MRI", "CPV", "STP", "GNB", "GAM", "GNQ", "GAB", "COG", "COD", "ANG",
-  "ZAM", "ZIM", "MAW", "MOZ", "BOT", "NAM", "SWZ", "LES"
-)
+# Създаване на папка data
+if (!dir.exists("data")) dir.create("data")
+cat("\n📁 Data folder:", normalizePath("data"), "\n")
+
+# Само няколко държави за тест (за да работи по-бързо)
+countries <- c("ENG", "ESP", "ITA", "GER", "FRA")
 
 season <- 2026
 all_matches <- list()
@@ -48,10 +34,11 @@ leagues_index <- list()
 
 for (i in seq_along(countries)) {
   country <- countries[i]
-  cat(sprintf("\n[%d/%d] 📊 Обработвам %s...\n", i, length(countries), country))
+  cat(sprintf("\n[%d/%d] 📊 Testing %s...\n", i, length(countries), country))
   
   tryCatch({
-    # Вземи URL за първа дивизия
+    # Опитай да вземеш URL за лигата
+    cat("  🔍 Getting league URL...\n")
     league_urls <- fb_league_urls(
       country = country,
       gender = "M",
@@ -59,54 +46,67 @@ for (i in seq_along(countries)) {
       tier = "1st"
     )
     
+    cat("  📌 Found", length(league_urls), "URLs\n")
+    
     if (length(league_urls) > 0) {
-      # Вземи мачовете за лигата
+      cat("  📥 Fetching matches from:", league_urls[1], "\n")
+      
+      # Опитай да вземеш мачове
       matches <- fb_match_results(league_urls[1])
       
-      # Добави в индекса
-      leagues_index[[country]] <- list(
-        name = unique(matches$Comp)[1],
-        country = country,
-        matches_count = nrow(matches)
-      )
+      cat("  ✅ Found", nrow(matches), "matches\n")
       
-      # Добави мачовете (само последните 10)
-      for (j in 1:min(10, nrow(matches))) {
-        all_matches <- append(all_matches, list(list(
-          date = as.character(matches$Date[j]),
-          home_team = matches$Home[j],
-          away_team = matches$Away[j],
-          home_score = matches$HomeGoals[j],
-          away_score = matches$AwayGoals[j],
-          competition = matches$Comp[j],
+      if (nrow(matches) > 0) {
+        # Добави в индекса
+        leagues_index[[country]] <- list(
+          name = unique(matches$Comp)[1],
           country = country,
-          match_url = matches$MatchURL[j]
-        )))
+          matches_count = nrow(matches)
+        )
+        
+        # Добави първите 5 мача
+        for (j in 1:min(5, nrow(matches))) {
+          all_matches <- append(all_matches, list(list(
+            date = as.character(matches$Date[j]),
+            home_team = matches$Home[j],
+            away_team = matches$Away[j],
+            home_score = matches$HomeGoals[j],
+            away_score = matches$AwayGoals[j],
+            competition = matches$Comp[j],
+            country = country
+          )))
+        }
+        cat("  ✅ Added", length(all_matches), "total matches so far\n")
       }
       
-      cat(sprintf("  ✅ %s - %d мача\n", unique(matches$Comp)[1], nrow(matches)))
-      
-      # Изчакване между заявките
+      # Изчакване
       Sys.sleep(2)
     } else {
-      cat(sprintf("  ⚠️ Няма данни за %s\n", country))
+      cat("  ⚠️ No league URL found\n")
     }
   }, error = function(e) {
-    cat(sprintf("  ❌ Грешка: %s\n", e$message))
+    cat("  ❌ ERROR:", e$message, "\n")
   })
 }
 
 # Записване на JSON файлове
-cat("\n💾 Записвам JSON файлове...\n")
+cat("\n💾 Saving JSON files...\n")
 
-# Индекс на лигите
-write_json(leagues_index, "data/leagues_index.json", pretty = TRUE, auto_unbox = TRUE)
-cat(sprintf("  ✅ data/leagues_index.json - %d лиги\n", length(leagues_index)))
+if (length(leagues_index) > 0) {
+  write_json(leagues_index, "data/leagues_index.json", pretty = TRUE, auto_unbox = TRUE)
+  cat("  ✅ leagues_index.json -", length(leagues_index), "leagues\n")
+} else {
+  cat("  ⚠️ No leagues data to save\n")
+  write_json(list(), "data/leagues_index.json", pretty = TRUE)
+}
 
-# Всички мачове
-write_json(all_matches, "data/all_matches.json", pretty = TRUE, auto_unbox = TRUE)
-cat(sprintf("  ✅ data/all_matches.json - %d мача\n", length(all_matches)))
+if (length(all_matches) > 0) {
+  write_json(all_matches, "data/all_matches.json", pretty = TRUE, auto_unbox = TRUE)
+  cat("  ✅ all_matches.json -", length(all_matches), "matches\n")
+} else {
+  cat("  ⚠️ No matches data to save\n")
+  write_json(list(), "data/all_matches.json", pretty = TRUE)
+}
 
-cat("\n========================================\n")
-cat("✅ FETCH ALL LEAGUES - ЗАВЪРШЕН\n")
+cat("\n✅ TEST COMPLETE\n")
 cat("========================================\n")
