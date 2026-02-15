@@ -1,0 +1,13 @@
+{
+  "name": "football-stats",
+  "version": "1.0.0",
+  "description": "Football statistics from open data",
+  "main": "index.html",
+  "scripts": {
+    "update": "python update_data.py",
+    "start": "python -m http.server 8000"
+  },
+  "keywords": ["football", "stats", "csv"],
+  "author": "",
+  "license": "MIT"
+}

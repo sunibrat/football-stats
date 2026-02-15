@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚽ Football Statistics</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚽ Football Statistics</h1>
+            <p>Open Data | Updated: <span id="currentDate"></span></p>
+        </header>
+
+        <div class="search-section">
+            <h2>🔍 Search Matches</h2>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>🏠 Home Team:</label>
+                    <input type="text" id="homeTeam" placeholder="e.g. Real Madrid" value="Real Madrid">
+                </div>
+                
+                <div class="form-group">
+                    <label>✈️ Away Team:</label>
+                    <input type="text" id="awayTeam" placeholder="e.g. Barcelona" value="Barcelona">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>📊 League:</label>
+                    <select id="leagueSelect">
+                        <option value="espana">🇪🇸 Spain - La Liga</option>
+                        <option value="england">🏴󠁧󠁢󠁥󠁮󠁧󠁿 England - Premier League</option>
+                        <option value="champions">⭐ Champions League</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>📅 Matches:</label>
+                    <select id="matchCount">
+                        <option value="5">Last 5</option>
+                        <option value="10" selected>Last 10</option>
+                        <option value="20">Last 20</option>
+                        <option value="all">All</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="searchMatches()">🔍 SEARCH</button>
+            <div class="loading" id="loading">⏳ Loading data...</div>
+        </div>
+
+        <div class="stats-summary" id="statsSummary" style="display: none;"></div>
+        <div class="results" id="results"></div>
+        <div class="error" id="error"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
