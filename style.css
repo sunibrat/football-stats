@@ -25,6 +25,7 @@ header {
     color: white;
     padding: 30px;
     text-align: center;
+    position: relative;
 }
 
 header h1 {
@@ -32,53 +33,73 @@ header h1 {
     margin-bottom: 10px;
 }
 
+.stats-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    padding: 8px 20px;
+    border-radius: 30px;
+    margin-top: 10px;
+    font-size: 0.95em;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
 .search-section {
     padding: 30px;
-    background: #f8f9fa;
+    background: #f8fafd;
+    border-bottom: 2px solid #eef2f6;
 }
 
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+.search-section h2 {
+    color: #1e3c72;
     margin-bottom: 20px;
+    font-size: 1.5em;
 }
 
-.form-group {
-    margin-bottom: 15px;
+.search-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 15px;
+    align-items: end;
 }
 
-label {
-    display: block;
-    margin-bottom: 8px;
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.input-group label {
     font-weight: 600;
     color: #1e3c72;
+    font-size: 0.95em;
 }
 
-input, select {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
+.input-group input {
+    padding: 12px 15px;
+    border: 2px solid #e0e7ed;
+    border-radius: 10px;
     font-size: 1em;
+    transition: all 0.3s;
 }
 
-input:focus, select:focus {
+.input-group input:focus {
     outline: none;
     border-color: #ff9800;
+    box-shadow: 0 0 0 3px rgba(255,152,0,0.1);
 }
 
 button {
-    width: 100%;
-    padding: 15px;
+    padding: 12px 30px;
     background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 1.2em;
-    font-weight: bold;
+    border-radius: 10px;
+    font-size: 1.1em;
+    font-weight: 600;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 45px;
+    white-space: nowrap;
 }
 
 button:hover {
@@ -88,17 +109,29 @@ button:hover {
 
 .loading {
     text-align: center;
-    padding: 20px;
-    color: #ff9800;
-    font-weight: bold;
-    display: none;
+    padding: 40px;
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #ff9800;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .stats-summary {
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
     color: white;
-    padding: 20px;
     margin: 20px;
+    padding: 20px;
     border-radius: 12px;
 }
 
@@ -112,7 +145,7 @@ button:hover {
 .stat-box {
     background: rgba(255,255,255,0.1);
     padding: 15px;
-    border-radius: 8px;
+    border-radius: 10px;
     text-align: center;
 }
 
@@ -129,21 +162,21 @@ button:hover {
 
 .results {
     padding: 20px;
-    display: none;
 }
 
 .match-card {
     background: white;
-    border: 2px solid #e0e0e0;
+    border: 2px solid #eef2f6;
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 15px;
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .match-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    border-color: #ff9800;
 }
 
 .match-header {
@@ -152,20 +185,26 @@ button:hover {
     align-items: center;
     margin-bottom: 15px;
     padding-bottom: 10px;
-    border-bottom: 2px solid #f0f0f0;
+    border-bottom: 2px solid #f0f4f8;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .match-date {
-    background: #f0f0f0;
+    background: #f0f4f8;
     padding: 5px 15px;
     border-radius: 20px;
     font-size: 0.9em;
+    font-weight: 500;
 }
 
-.match-score {
-    font-size: 2.2em;
-    font-weight: bold;
-    color: #1e3c72;
+.match-competition {
+    background: #ff9800;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 500;
 }
 
 .match-teams {
@@ -176,62 +215,43 @@ button:hover {
     font-size: 1.2em;
 }
 
-.team-name {
+.team {
     font-weight: 600;
     flex: 1;
     text-align: center;
 }
 
-.team-name.home {
+.team.home {
     color: #1e3c72;
 }
 
-.team-name.away {
+.team.away {
     color: #764ba2;
 }
 
-.vs {
-    padding: 0 20px;
-    color: #999;
-}
-
-.match-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.stat-item {
-    background: #f8f9fa;
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
-}
-
-.stat-label {
-    color: #666;
-    font-size: 0.85em;
-}
-
-.stat-value {
-    font-size: 1.3em;
-    font-weight: bold;
+.score {
+    font-size: 2em;
+    font-weight: 800;
     color: #1e3c72;
+    padding: 0 30px;
 }
 
 .cards {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #f0f4f8;
 }
 
 .yellow-card {
-    background: #ffd700;
-    padding: 5px 12px;
+    background: #ffd966;
+    color: #1a2a3a;
+    padding: 5px 15px;
     border-radius: 20px;
     font-size: 0.9em;
+    font-weight: 500;
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -240,9 +260,10 @@ button:hover {
 .red-card {
     background: #dc3545;
     color: white;
-    padding: 5px 12px;
+    padding: 5px 15px;
     border-radius: 20px;
     font-size: 0.9em;
+    font-weight: 500;
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -253,17 +274,34 @@ button:hover {
     color: white;
     padding: 15px;
     margin: 20px;
-    border-radius: 8px;
-    display: none;
+    border-radius: 10px;
     text-align: center;
 }
 
+footer {
+    background: #f8fafd;
+    padding: 20px;
+    text-align: center;
+    color: #5a6f84;
+    border-top: 2px solid #eef2f6;
+    font-size: 0.9em;
+}
+
 @media (max-width: 768px) {
-    .form-row {
+    .search-box {
         grid-template-columns: 1fr;
     }
     
     .stats-grid {
         grid-template-columns: 1fr 1fr;
+    }
+    
+    .match-teams {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .score {
+        padding: 10px 0;
     }
 }

@@ -3,59 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚽ Football Statistics</title>
+    <title>⚽ Global Football Stats - All Leagues</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>⚽ Football Statistics</h1>
-            <p>Open Data | Updated: <span id="currentDate"></span></p>
+            <h1>⚽ Global Football Statistics</h1>
+            <p>All leagues • Auto-updated daily • Data from worldfootballR</p>
+            <div class="stats-badge" id="statsBadge">Loading...</div>
         </header>
 
-        <div class="search-section">
-            <h2>🔍 Search Matches</h2>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label>🏠 Home Team:</label>
-                    <input type="text" id="homeTeam" placeholder="e.g. Real Madrid" value="Real Madrid">
-                </div>
+        <main>
+            <div class="search-section">
+                <h2>🔍 Search Head-to-Head Matches</h2>
                 
-                <div class="form-group">
-                    <label>✈️ Away Team:</label>
-                    <input type="text" id="awayTeam" placeholder="e.g. Barcelona" value="Barcelona">
+                <div class="search-box">
+                    <div class="input-group">
+                        <label for="team1">🏠 Home Team</label>
+                        <input type="text" id="team1" placeholder="e.g. Real Madrid" value="Real Madrid">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="team2">✈️ Away Team</label>
+                        <input type="text" id="team2" placeholder="e.g. Barcelona" value="Barcelona">
+                    </div>
+                    
+                    <button onclick="searchMatches()">🔍 SEARCH</button>
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label>📊 League:</label>
-                    <select id="leagueSelect">
-                        <option value="espana">🇪🇸 Spain - La Liga</option>
-                        <option value="england">🏴󠁧󠁢󠁥󠁮󠁧󠁿 England - Premier League</option>
-                        <option value="champions">⭐ Champions League</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>📅 Matches:</label>
-                    <select id="matchCount">
-                        <option value="5">Last 5</option>
-                        <option value="10" selected>Last 10</option>
-                        <option value="20">Last 20</option>
-                        <option value="all">All</option>
-                    </select>
-                </div>
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Searching across all leagues...</p>
             </div>
 
-            <button onclick="searchMatches()">🔍 SEARCH</button>
-            <div class="loading" id="loading">⏳ Loading data...</div>
-        </div>
+            <div id="stats-summary" class="stats-summary" style="display: none;"></div>
+            <div id="results" class="results"></div>
+            <div id="error" class="error" style="display: none;"></div>
+        </main>
 
-        <div class="stats-summary" id="statsSummary" style="display: none;"></div>
-        <div class="results" id="results"></div>
-        <div class="error" id="error"></div>
+        <footer>
+            <p>Data sources: FBref.com, Transfermarkt | Updated: <span id="last-update"></span></p>
+        </footer>
     </div>
 
     <script src="script.js"></script>

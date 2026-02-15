@@ -1,223 +1,256 @@
-// Display current date
-document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US');
+// Global variables
+let allMatches = [];
+let allCards = [];
+let leaguesIndex = {};
+let injuries = [];
 
-// Sample card data (if CSV doesn't have cards)
-const cardData = {
-    'Real Madrid vs Barcelona': {
-        '2024-04-21': { homeYellow: ['Vinicius Jr.', 'Modric'], awayYellow: ['Pedri'], homeRed: [], awayRed: [] },
-        '2024-01-14': { homeYellow: ['Lewandowski', 'Araujo'], awayYellow: ['Carvajal'], homeRed: [], awayRed: [] },
-        '2023-10-28': { homeYellow: ['Gavi'], awayYellow: ['Kroos', 'Rüdiger'], homeRed: [], awayRed: [] }
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('last-update').textContent = new Date().toLocaleString();
+    await loadData();
+});
+
+// Load all data from JSON files
+async function loadData() {
+    try {
+        // Load leagues index
+        const indexResponse = await fetch('data/leagues_index.json');
+        if (indexResponse.ok) {
+            leaguesIndex = await indexResponse.json();
+            const leagueCount = Object.keys(leaguesIndex).length;
+            document.getElementById('statsBadge').textContent = `📊 ${leagueCount} leagues loaded`;
+        }
+
+        // Load all matches
+        const matchesResponse = await fetch('data/all_matches.json');
+        if (matchesResponse.ok) {
+            allMatches = await matchesResponse.json();
+            console.log(`✅ Loaded ${allMatches.length} matches`);
+        }
+
+        // Load cards
+        const cardsResponse = await fetch('data/all_cards.json');
+        if (cardsResponse.ok) {
+            allCards = await cardsResponse.json();
+            console.log(`✅ Loaded ${allCards.length} cards`);
+        }
+
+        // Load injuries
+        const injuriesResponse = await fetch('data/injuries.json');
+        if (injuriesResponse.ok) {
+            injuries = await injuriesResponse.json();
+            console.log(`✅ Loaded ${injuries.length} injuries`);
+        }
+
+    } catch (error) {
+        console.error('Error loading data:', error);
+        document.getElementById('statsBadge').textContent = '⚠️ Error loading data';
     }
-};
+}
 
-// Main search function
+// Search head-to-head matches
 async function searchMatches() {
-    const homeTeam = document.getElementById('homeTeam').value.trim();
-    const awayTeam = document.getElementById('awayTeam').value.trim();
-    const league = document.getElementById('leagueSelect').value;
-    const matchCount = document.getElementById('matchCount').value;
-    
-    if (!homeTeam || !awayTeam) {
-        showError('Please enter both teams');
+    const team1 = document.getElementById('team1').value.trim().toLowerCase();
+    const team2 = document.getElementById('team2').value.trim().toLowerCase();
+
+    if (!team1 || !team2) {
+        showError('Please enter both team names');
         return;
     }
-    
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
-    document.getElementById('statsSummary').style.display = 'none';
-    document.getElementById('error').style.display = 'none';
-    
+
+    showLoading();
+
     try {
-        let csvPath = '';
-        switch(league) {
-            case 'espana':
-                csvPath = 'data/espana/esp.1.csv';
-                break;
-            case 'england':
-                csvPath = 'data/england/eng.1.csv';
-                break;
-            case 'champions':
-                csvPath = 'data/champions-league/cl.csv';
-                break;
-        }
-        
-        let matches = [];
-        try {
-            const response = await fetch(csvPath);
-            if (response.ok) {
-                const csvText = await response.text();
-                matches = parseCSV(csvText, homeTeam, awayTeam);
-            } else {
-                console.log('CSV file not found, using sample data');
-                matches = getSampleData(homeTeam, awayTeam);
-            }
-        } catch (error) {
-            console.log('Error loading CSV, using sample data');
-            matches = getSampleData(homeTeam, awayTeam);
-        }
-        
-        if (matchCount !== 'all') {
-            matches = matches.slice(0, parseInt(matchCount));
-        }
-        
-        if (matches.length === 0) {
-            showError('No matches found between these teams');
+        // Filter matches between the two teams
+        const headToHead = allMatches.filter(m => 
+            (m.home_team.toLowerCase().includes(team1) && m.away_team.toLowerCase().includes(team2)) ||
+            (m.home_team.toLowerCase().includes(team2) && m.away_team.toLowerCase().includes(team1))
+        );
+
+        if (headToHead.length === 0) {
+            hideLoading();
+            showError(`No matches found between ${team1} and ${team2}`);
             return;
         }
-        
-        displayResults(matches, homeTeam, awayTeam);
+
+        // Calculate statistics
+        const stats = calculateStats(headToHead, team1, team2);
+        displayStats(stats, team1, team2);
+        displayMatches(headToHead, team1, team2);
         
     } catch (error) {
-        showError('Error: ' + error.message);
+        showError('Error searching matches: ' + error.message);
     } finally {
-        document.getElementById('loading').style.display = 'none';
+        hideLoading();
     }
 }
 
-// Parse CSV file
-function parseCSV(csvText, homeTeam, awayTeam) {
-    const lines = csvText.split('\n');
-    const headers = lines[0].split(',');
-    
-    const dateIdx = headers.findIndex(h => h.includes('Date'));
-    const homeIdx = headers.findIndex(h => h.includes('Home') || h.includes('Team 1'));
-    const awayIdx = headers.findIndex(h => h.includes('Away') || h.includes('Team 2'));
-    const scoreIdx = headers.findIndex(h => h.includes('FT') || h.includes('Score'));
-    
-    const matches = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',');
-        if (values.length < 5) continue;
-        
-        const home = values[homeIdx]?.trim() || '';
-        const away = values[awayIdx]?.trim() || '';
-        
-        if ((home.includes(homeTeam) && away.includes(awayTeam)) || 
-            (home.includes(awayTeam) && away.includes(homeTeam))) {
-            
-            const score = values[scoreIdx]?.trim() || '0-0';
-            const [homeGoals, awayGoals] = score.split('-').map(Number);
-            
-            matches.push({
-                date: values[dateIdx] || 'Unknown date',
-                homeTeam: home,
-                awayTeam: away,
-                score: score,
-                homeGoals: homeGoals || 0,
-                awayGoals: awayGoals || 0,
-                competition: league === 'espana' ? 'La Liga' : 
-                           league === 'england' ? 'Premier League' : 'Champions League'
-            });
-        }
-    }
-    
-    return matches;
-}
+// Calculate statistics
+function calculateStats(matches, team1, team2) {
+    let team1Wins = 0, team2Wins = 0, draws = 0;
+    let team1Goals = 0, team2Goals = 0;
 
-// Sample data for testing
-function getSampleData(homeTeam, awayTeam) {
-    return [
-        { date: '2024-04-21', homeTeam: 'Real Madrid', awayTeam: 'Barcelona', score: '3-2', homeGoals: 3, awayGoals: 2, competition: 'La Liga' },
-        { date: '2024-01-14', homeTeam: 'Barcelona', awayTeam: 'Real Madrid', score: '1-4', homeGoals: 1, awayGoals: 4, competition: 'Super Cup' },
-        { date: '2023-10-28', homeTeam: 'Barcelona', awayTeam: 'Real Madrid', score: '1-2', homeGoals: 1, awayGoals: 2, competition: 'La Liga' },
-        { date: '2023-03-19', homeTeam: 'Barcelona', awayTeam: 'Real Madrid', score: '2-1', homeGoals: 2, awayGoals: 1, competition: 'La Liga' },
-        { date: '2023-03-02', homeTeam: 'Real Madrid', awayTeam: 'Barcelona', score: '0-1', homeGoals: 0, awayGoals: 1, competition: 'Copa del Rey' }
-    ];
-}
-
-// Display results
-function displayResults(matches, homeTeam, awayTeam) {
-    const resultsDiv = document.getElementById('results');
-    const statsDiv = document.getElementById('statsSummary');
-    
-    let homeWins = 0, awayWins = 0, draws = 0;
-    let homeGoals = 0, awayGoals = 0;
-    
     matches.forEach(m => {
-        if (m.homeGoals > m.awayGoals) {
-            if (m.homeTeam.includes(homeTeam)) homeWins++;
-            else awayWins++;
-        } else if (m.awayGoals > m.homeGoals) {
-            if (m.awayTeam.includes(homeTeam)) homeWins++;
-            else awayWins++;
+        if (m.home_score > m.away_score) {
+            if (m.home_team.toLowerCase().includes(team1)) team1Wins++;
+            else team2Wins++;
+        } else if (m.away_score > m.home_score) {
+            if (m.away_team.toLowerCase().includes(team1)) team1Wins++;
+            else team2Wins++;
         } else {
             draws++;
         }
-        
-        homeGoals += m.homeGoals;
-        awayGoals += m.awayGoals;
+
+        if (m.home_team.toLowerCase().includes(team1)) {
+            team1Goals += m.home_score;
+            team2Goals += m.away_score;
+        } else {
+            team1Goals += m.away_score;
+            team2Goals += m.home_score;
+        }
     });
+
+    return {
+        team1Wins,
+        team2Wins,
+        draws,
+        team1Goals,
+        team2Goals,
+        totalMatches: matches.length
+    };
+}
+
+// Display statistics
+function displayStats(stats, team1, team2) {
+    const statsDiv = document.getElementById('stats-summary');
     
     statsDiv.innerHTML = `
-        <h3>📊 Statistics</h3>
+        <h3>📊 Head-to-Head Statistics</h3>
         <div class="stats-grid">
             <div class="stat-box">
-                <div class="stat-number">${homeWins}</div>
-                <div class="stat-label">${homeTeam} Wins</div>
+                <div class="stat-number">${stats.team1Wins}</div>
+                <div class="stat-label">${team1} Wins</div>
             </div>
             <div class="stat-box">
-                <div class="stat-number">${draws}</div>
+                <div class="stat-number">${stats.draws}</div>
                 <div class="stat-label">Draws</div>
             </div>
             <div class="stat-box">
-                <div class="stat-number">${awayWins}</div>
-                <div class="stat-label">${awayTeam} Wins</div>
+                <div class="stat-number">${stats.team2Wins}</div>
+                <div class="stat-label">${team2} Wins</div>
             </div>
             <div class="stat-box">
-                <div class="stat-number">${homeGoals + awayGoals}</div>
-                <div class="stat-label">Total Goals</div>
+                <div class="stat-number">${stats.totalMatches}</div>
+                <div class="stat-label">Total Matches</div>
             </div>
+        </div>
+        <div style="margin-top: 15px; text-align: center;">
+            ⚽ Goals: ${team1} ${stats.team1Goals} - ${stats.team2Goals} ${team2}
         </div>
     `;
     
-    let html = '<h3>⚔️ Matches</h3>';
+    statsDiv.style.display = 'block';
+}
+
+// Display matches
+function displayMatches(matches, team1, team2) {
+    const resultsDiv = document.getElementById('results');
+    
+    let html = '<h2 style="margin-bottom: 20px; color: #1e3c72;">⚔️ Head-to-Head Matches</h2>';
+    
+    matches.sort((a, b) => new Date(b.date) - new Date(a.date));
     
     matches.forEach(m => {
-        const matchKey = `${m.homeTeam} vs ${m.awayTeam}`;
-        const cards = cardData[matchKey]?.[m.date] || 
-                     { homeYellow: [], awayYellow: [], homeRed: [], awayRed: [] };
+        // Check if this team1 is home or away
+        const isTeam1Home = m.home_team.toLowerCase().includes(team1);
         
         html += `
             <div class="match-card">
                 <div class="match-header">
                     <span class="match-date">📅 ${formatDate(m.date)}</span>
-                    <span class="match-score">${m.score}</span>
+                    <span class="match-competition">🏆 ${m.competition || 'Unknown'}</span>
                 </div>
-                
                 <div class="match-teams">
-                    <div class="team-name home">🏠 ${m.homeTeam}</div>
-                    <div class="vs">VS</div>
-                    <div class="team-name away">✈️ ${m.awayTeam}</div>
+                    <span class="team home">🏠 ${m.home_team}</span>
+                    <span class="score">${m.home_score} - ${m.away_score}</span>
+                    <span class="team away">✈️ ${m.away_team}</span>
                 </div>
-                
-                <div class="match-stats">
-                    <div class="stat-item">
-                        <div class="stat-label">🏆 Competition</div>
-                        <div class="stat-value">${m.competition}</div>
-                    </div>
-                </div>
-                
-                <div class="cards">
-                    ${cards.homeYellow.map(p => `<span class="yellow-card">🟨 ${p}</span>`).join('')}
-                    ${cards.awayYellow.map(p => `<span class="yellow-card">🟨 ${p}</span>`).join('')}
-                    ${cards.homeRed.map(p => `<span class="red-card">🟥 ${p}</span>`).join('')}
-                    ${cards.awayRed.map(p => `<span class="red-card">🟥 ${p}</span>`).join('')}
-                </div>
-            </div>
         `;
+        
+        // Add cards if available
+        const matchCards = allCards.filter(c => 
+            c.match_date === m.date && 
+            c.home_team === m.home_team && 
+            c.away_team === m.away_team
+        );
+        
+        if (matchCards.length > 0) {
+            html += '<div class="cards">';
+            matchCards.forEach(card => {
+                const cardType = card.Card_Type === 'Yellow' ? '🟨' : '🟥';
+                const cardClass = card.Card_Type === 'Yellow' ? 'yellow-card' : 'red-card';
+                html += `<span class="${cardClass}">${cardType} ${card.Player} (${card.Minute}')</span>`;
+            });
+            html += '</div>';
+        }
+        
+        html += '</div>';
     });
+    
+    // Add injuries section
+    const team1Injuries = injuries.filter(i => 
+        i.club && i.club.toLowerCase().includes(team1) ||
+        i.team && i.team.toLowerCase().includes(team1)
+    );
+    
+    const team2Injuries = injuries.filter(i => 
+        i.club && i.club.toLowerCase().includes(team2) ||
+        i.team && i.team.toLowerCase().includes(team2)
+    );
+    
+    if (team1Injuries.length > 0 || team2Injuries.length > 0) {
+        html += '<h2 style="margin: 30px 0 20px; color: #1e3c72;">🤕 Current Injuries</h2>';
+        
+        if (team1Injuries.length > 0) {
+            html += `<h3>${team1}</h3><div class="cards">`;
+            team1Injuries.forEach(i => {
+                html += `<span class="red-card">⚕️ ${i.player_name} - ${i.injury}</span>`;
+            });
+            html += '</div>';
+        }
+        
+        if (team2Injuries.length > 0) {
+            html += `<h3 style="margin-top: 15px;">${team2}</h3><div class="cards">`;
+            team2Injuries.forEach(i => {
+                html += `<span class="red-card">⚕️ ${i.player_name} - ${i.injury}</span>`;
+            });
+            html += '</div>';
+        }
+    }
     
     resultsDiv.innerHTML = html;
     resultsDiv.style.display = 'block';
-    statsDiv.style.display = 'block';
 }
 
+// Helper: Format date
 function formatDate(dateStr) {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US');
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+// Helper: Show loading
+function showLoading() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('stats-summary').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
+}
+
+// Helper: Hide loading
+function hideLoading() {
+    document.getElementById('loading').style.display = 'none';
+}
+
+// Helper: Show error
 function showError(message) {
     const errorDiv = document.getElementById('error');
     errorDiv.textContent = '❌ ' + message;
